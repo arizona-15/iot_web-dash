@@ -33,7 +33,7 @@ const MapComponent = () => {
             scrollWheelZoom={false} 
             style={{ height: '100%', width: '100%' }}
         >
-          {/* Layer Peta (OpenStreetMap - Tampilan mirip Google Maps) */}
+          {/* Layer Peta (OpenStreetMap) */}
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

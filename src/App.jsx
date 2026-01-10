@@ -67,26 +67,21 @@ const App = () => {
     { label: '6 Months', val: '180d' },
   ];
 
-  // --- 1. FORMATTER UTAMA: CSV LENGKAP (Tgl + Jam) ---
   const formatForCSV = (timeStr) => {
     if (!timeStr) return '-';
     const date = new Date(timeStr);
     
-    // Jika format valid (ISO dari Node-RED)
     if (!isNaN(date.getTime())) {
-       // Output: 10/01/2026 17:30
        return date.toLocaleString('id-ID', {
           day: '2-digit', month: '2-digit', year: 'numeric',
           hour: '2-digit', minute: '2-digit', hour12: false
        });
     }
     
-    // Fallback jika data masih yang lama (cuma jam)
     return timeStr;
   };
 
-  // --- 2. FORMATTER GRAFIK (WIB Simpel) ---
-  // Hanya dipakai jika data Node-RED error/buntung
+  // Jika data Node-RED error
   const convertToWIB = (timeStr) => {
     if (!timeStr) return '';
     const date = new Date(timeStr);
@@ -106,7 +101,6 @@ const App = () => {
     return timeStr;
   };
 
-  // --- 3. FORMATTER SUMBU X (PINTAR: Jam vs Tanggal) ---
   const formatXAxis = (tickItem) => {
     if (!tickItem) return '';
     const date = new Date(tickItem);
@@ -114,7 +108,6 @@ const App = () => {
     if (!isNaN(date.getTime())) {
         const longRanges = ['2d', '7d', '30d', '90d', '180d'];
         
-        // > 24 Jam: Tampilkan Tgl + Jam
         if (longRanges.includes(timeRange)) {
             return date.toLocaleString('id-ID', { 
                 day: 'numeric', month: 'short', 
@@ -169,7 +162,6 @@ const App = () => {
     return (total / validData.length).toFixed(1);
   };
 
-  // --- DOWNLOAD CSV (DIPERBAIKI) ---
   const downloadCSV = () => {
     if (!chartData || chartData.length === 0) {
       alert("No data loaded to download.");
@@ -181,7 +173,6 @@ const App = () => {
 
     const rows = chartData.map(item => [
       `"${selectedNode.label}"`, 
-      // PERUBAHAN: Gunakan formatForCSV agar tanggal muncul lengkap
       `"${formatForCSV(item.time)}"`,
       item.suhu ?? "-", 
       item.do ?? "-",
