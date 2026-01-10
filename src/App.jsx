@@ -67,38 +67,69 @@ const App = () => {
     { label: '6 Months', val: '180d' },
   ];
 
-  // --- FUNGSI UTAMA: KONVERSI MANUAL UTC -> WIB (+7 JAM) ---
-  // Kita taruh di atas agar bisa dipanggil oleh Chart maupun CSV
+  // --- 1. FORMATTER UTAMA: CSV LENGKAP (Tgl + Jam) ---
+  const formatForCSV = (timeStr) => {
+    if (!timeStr) return '-';
+    const date = new Date(timeStr);
+    
+    // Jika format valid (ISO dari Node-RED)
+    if (!isNaN(date.getTime())) {
+       // Output: 10/01/2026 17:30
+       return date.toLocaleString('id-ID', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', hour12: false
+       });
+    }
+    
+    // Fallback jika data masih yang lama (cuma jam)
+    return timeStr;
+  };
+
+  // --- 2. FORMATTER GRAFIK (WIB Simpel) ---
+  // Hanya dipakai jika data Node-RED error/buntung
   const convertToWIB = (timeStr) => {
     if (!timeStr) return '';
-
-    // 1. Coba parse sebagai tanggal standar (ISO)
     const date = new Date(timeStr);
     if (!isNaN(date.getTime())) {
       return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
     }
-
-    // 2. Jika formatnya cuma string jam "10:00" (Server Case)
     if (typeof timeStr === 'string' && timeStr.includes(':')) {
        try {
          const parts = timeStr.split(':');
          let hour = parseInt(parts[0]);
          let minute = parts[1];
-
-         // TAMBAH 7 JAM
          hour = hour + 7;
-
-         // Jika lewat 24 jam (misal jam 25), reset
          if (hour >= 24) hour = hour - 24;
-
          return `${hour.toString().padStart(2, '0')}:${minute}`;
-       } catch (e) {
-         return timeStr;
-       }
+       } catch (e) { return timeStr; }
     }
     return timeStr;
   };
-  // ---------------------------------------------------------
+
+  // --- 3. FORMATTER SUMBU X (PINTAR: Jam vs Tanggal) ---
+  const formatXAxis = (tickItem) => {
+    if (!tickItem) return '';
+    const date = new Date(tickItem);
+    
+    if (!isNaN(date.getTime())) {
+        const longRanges = ['2d', '7d', '30d', '90d', '180d'];
+        
+        // > 24 Jam: Tampilkan Tgl + Jam
+        if (longRanges.includes(timeRange)) {
+            return date.toLocaleString('id-ID', { 
+                day: 'numeric', month: 'short', 
+                hour: '2-digit', minute: '2-digit', hour12: false 
+            });
+        } 
+        // <= 24 Jam: Tampilkan Jam saja
+        else {
+            return date.toLocaleTimeString('id-ID', { 
+                hour: '2-digit', minute: '2-digit', hour12: false 
+            });
+        }
+    }
+    return convertToWIB(tickItem);
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -138,7 +169,7 @@ const App = () => {
     return (total / validData.length).toFixed(1);
   };
 
-  // --- PERBAIKAN DI SINI (DOWNLOAD CSV) ---
+  // --- DOWNLOAD CSV (DIPERBAIKI) ---
   const downloadCSV = () => {
     if (!chartData || chartData.length === 0) {
       alert("No data loaded to download.");
@@ -150,8 +181,8 @@ const App = () => {
 
     const rows = chartData.map(item => [
       `"${selectedNode.label}"`, 
-      // KITA TERAPKAN KONVERSI WIB DI SINI JUGA
-      `"${convertToWIB(item.time)}"`, 
+      // PERUBAHAN: Gunakan formatForCSV agar tanggal muncul lengkap
+      `"${formatForCSV(item.time)}"`,
       item.suhu ?? "-", 
       item.do ?? "-",
       item.rssi ?? "-",
@@ -173,7 +204,6 @@ const App = () => {
     link.click();
     document.body.removeChild(link);
   };
-  // ----------------------------------------
 
   const downloadImage = async () => {
     if (chartRef.current === null) return;
@@ -260,7 +290,7 @@ const App = () => {
                 <div className={`w-2 h-2 rounded-full animate-pulse ${status.online ? 'bg-green-500' : 'bg-red-500'}`}></div>
                 <span className="text-xs font-bold text-gray-600">{status.online ? 'Gateway Connected' : 'Gateway Offline'}</span>
              </div>
-             <p className="text-[10px] text-gray-400">Dashboard Version v1.9 (CSV WIB Fixed)</p>
+             <p className="text-[10px] text-gray-400">Dashboard Version v2.2 (CSV Date Fix)</p>
         </div>
       </aside>
 
@@ -345,22 +375,31 @@ const App = () => {
                 
                 <div className="flex-1 w-full min-h-[300px] relative">
                     <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
+                    
+                    <LineChart key={timeRange} data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        
                         <XAxis 
                             dataKey="time"
-                            tickFormatter={convertToWIB} 
+                            tickFormatter={formatXAxis} 
                             axisLine={false} 
                             tickLine={false} 
                             tick={{fill: '#94a3b8', fontSize: 11}} 
                             dy={10} 
                             minTickGap={35}
                         />
+
                         <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{fill: '#3b82f6'}} domain={['auto', 'auto']} unit="°C" />
                         <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{fill: '#10b981'}} domain={[0, 'auto']} unit=" mg" />
                         
                         <Tooltip 
-                            labelFormatter={(label) => `Time: ${convertToWIB(label)}`}
+                            labelFormatter={(label) => {
+                                const date = new Date(label);
+                                if (!isNaN(date.getTime())) {
+                                  return date.toLocaleString('id-ID', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', hour12: false });
+                                }
+                                return convertToWIB(label);
+                            }}
                             contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', padding: '12px'}}
                             formatter={(val, name) => [val, name === 'suhu' ? 'Water Temperature' : 'Dissolved Oxygen']}
                             labelStyle={{color: '#64748b', marginBottom: '8px', fontSize: '12px'}}
@@ -387,10 +426,10 @@ const App = () => {
                     </div>
                 </div>
             </div>
-
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+             {/* NETWORK STATUS */}
              <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden">
                 <div className="flex justify-between items-start z-10 relative">
                    <div>
