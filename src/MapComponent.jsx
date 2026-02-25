@@ -16,10 +16,10 @@ let DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 const MapComponent = () => {
-  const position1 = [2.378355, 99.116135]; 
-  const position2 = [2.379148, 99.124579]; 
+  const position1 = [2.345570, 99.068080]; 
+  const position2 = [2.346837, 99.044691]; 
   
-  const centerPosition = [2.3787515, 99.120357];
+  const centerPosition = [2.3462035, 99.0563855];
 
   return (
     <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 h-full flex flex-col">
@@ -39,17 +39,17 @@ const MapComponent = () => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {/* Marker 1: Pantai Hatulian */}
+          {/* Marker 1 */}
           <Marker position={position1}>
             <Popup>
-              <b>Node 1</b><br />Hatulian Beach.
+              <b>Node 1</b><br />Lumban Silintong.
             </Popup>
           </Marker>
 
-          {/* Marker 2: Pantai Pardinggaran */}
+          {/* Marker 2: titik ke-2 */}
           <Marker position={position2}>
             <Popup>
-              <b>Node 2</b><br />Pardinggaran Beach.
+              <b>Node 2</b><br />Lumban Bul-bul.
             </Popup>
           </Marker>
 

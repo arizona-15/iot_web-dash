@@ -14,14 +14,14 @@ const NODE_CONFIG = [
   { 
     db_id: 'Node1',       
     label: 'Node 1',      
-    area: 'Hatulian Beach', 
-    desc: 'Monitoring Hatulian Beach tourism area'
+    area: 'Lumban Bul-bul', 
+    desc: 'Monitoring Lumban Bul-bul tourism area'
   },
   { 
     db_id: 'Node2', 
     label: 'Node 2', 
-    area: 'Pardinggaran Beach',
-    desc: 'Monitoring Pardinggaran conservation area'
+    area: 'Lumban Silintong',
+    desc: 'Monitoring Lumban Silintong conservation area'
   }
 ];
 
