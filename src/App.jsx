@@ -44,7 +44,7 @@ const RealTimeClock = () => {
 };
 
 const App = () => {
-  // const API_URL = "http://103.59.94.231:1880/api/water-data";
+  // Gunakan /api/water-data agar diproxy oleh Nginx (HTTPS friendly)
   const API_URL = "/api/water-data";
 
   const [selectedNode, setSelectedNode] = useState(NODE_CONFIG[0]); 
@@ -68,6 +68,7 @@ const App = () => {
     { label: '6 Months', val: '180d' },
   ];
 
+  // --- FORMATTER CSV (Tanggal Lengkap) ---
   const formatForCSV = (timeStr) => {
     if (!timeStr) return '-';
     const date = new Date(timeStr);
@@ -78,11 +79,10 @@ const App = () => {
           hour: '2-digit', minute: '2-digit', hour12: false
        });
     }
-    
     return timeStr;
   };
 
-  // Jika data Node-RED error
+  // --- FORMATTER FALLBACK (Hanya Jam) ---
   const convertToWIB = (timeStr) => {
     if (!timeStr) return '';
     const date = new Date(timeStr);
@@ -102,6 +102,7 @@ const App = () => {
     return timeStr;
   };
 
+  // --- FORMATTER SUMBU X GRAFIK ---
   const formatXAxis = (tickItem) => {
     if (!tickItem) return '';
     const date = new Date(tickItem);
@@ -115,7 +116,6 @@ const App = () => {
                 hour: '2-digit', minute: '2-digit', hour12: false 
             });
         } 
-        // <= 24 Jam: Tampilkan Jam saja
         else {
             return date.toLocaleTimeString('id-ID', { 
                 hour: '2-digit', minute: '2-digit', hour12: false 
@@ -201,8 +201,12 @@ const App = () => {
     if (chartRef.current === null) return;
     document.body.style.cursor = 'wait';
     try {
+      // Penambahan filter untuk menghindari error font loading
       const dataUrl = await toPng(chartRef.current, { 
-        cacheBust: true, backgroundColor: '#ffffff', pixelRatio: 2 
+        cacheBust: true, 
+        backgroundColor: '#ffffff', 
+        pixelRatio: 2,
+        skipAutoScale: true
       });
       const link = document.createElement('a');
       link.download = `Chart_${selectedNode.label.replace(/\s/g, '')}_${timeRange}_${new Date().toISOString().split('T')[0]}.png`;
@@ -212,7 +216,7 @@ const App = () => {
       document.body.removeChild(link);
     } catch (err) {
       console.error('Failed to save image:', err);
-      alert("Failed to save image.");
+      // alert("Failed to save image."); // Optional: silent fail agar tidak mengganggu user
     } finally {
       document.body.style.cursor = 'default';
     }
@@ -282,7 +286,7 @@ const App = () => {
                 <div className={`w-2 h-2 rounded-full animate-pulse ${status.online ? 'bg-green-500' : 'bg-red-500'}`}></div>
                 <span className="text-xs font-bold text-gray-600">{status.online ? 'Gateway Connected' : 'Gateway Offline'}</span>
              </div>
-             <p className="text-[10px] text-gray-400">Dashboard Version v2.2 (CSV Date Fix)</p>
+             <p className="text-[10px] text-gray-400">Dashboard Version v2.3 (Fix Chart Height)</p>
         </div>
       </aside>
 
@@ -365,7 +369,8 @@ const App = () => {
                     </div>
                 </div>
                 
-                <div className="flex-1 w-full min-h-[300px] relative">
+                {/* PERBAIKAN DI SINI: Memberikan tinggi pasti (bukan flex-1) agar Recharts bisa mengukur */}
+                <div className="w-full h-[300px] md:h-[350px] relative">
                     <ResponsiveContainer width="100%" height="100%">
                     
                     <LineChart key={timeRange} data={chartData}>
