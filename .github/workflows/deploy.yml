@@ -16,6 +16,8 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
+          timeout: 30s
+          command_timeout: 30m
           script: |
             cd /var/www/dashboard-iot
             
@@ -26,6 +28,6 @@ jobs:
             
             npm run build
             
-            # sudo systemctl restart nginx 
+            sudo systemctl restart nginx 
             
             echo "Deployment Berhasil!"
