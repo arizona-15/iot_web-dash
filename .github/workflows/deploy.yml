@@ -1,0 +1,31 @@
+name: Deploy React App to VPS
+
+on:
+  push:
+    branches:
+      - main  # Atau 'master', sesuaikan dengan branch utama Anda
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            cd /var/www/dashboard-iot
+            
+            git reset --hard
+            git pull origin main
+            
+            npm install
+            
+            npm run build
+            
+            # sudo systemctl restart nginx 
+            
+            echo "Deployment Berhasil!"
