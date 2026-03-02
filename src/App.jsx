@@ -44,7 +44,8 @@ const RealTimeClock = () => {
 };
 
 const App = () => {
-  const API_URL = "http://103.59.94.231:1880/api/water-data";
+  // const API_URL = "http://103.59.94.231:1880/api/water-data";
+  const API_URL = "/api/water-data";
 
   const [selectedNode, setSelectedNode] = useState(NODE_CONFIG[0]); 
   const [timeRange, setTimeRange] = useState('24h');
