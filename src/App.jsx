@@ -44,7 +44,6 @@ const RealTimeClock = () => {
 };
 
 const App = () => {
-  // Gunakan /api/water-data agar diproxy oleh Nginx (HTTPS friendly)
   const API_URL = "/api/water-data";
 
   const [selectedNode, setSelectedNode] = useState(NODE_CONFIG[0]); 
@@ -68,61 +67,62 @@ const App = () => {
     { label: '6 Months', val: '180d' },
   ];
 
-  // --- FORMATTER CSV (Tanggal Lengkap) ---
+  // --- 1. FORMAT CSV YANG RAPI ---
   const formatForCSV = (timeStr) => {
     if (!timeStr) return '-';
     const date = new Date(timeStr);
     
+    // Format standar Excel Indonesia: dd/mm/yyyy hh:mm
     if (!isNaN(date.getTime())) {
        return date.toLocaleString('id-ID', {
           day: '2-digit', month: '2-digit', year: 'numeric',
           hour: '2-digit', minute: '2-digit', hour12: false
-       });
+       }).replace(/\./g, ':'); // Pastikan pemisah waktu adalah titik dua
     }
     return timeStr;
   };
 
-  // --- FORMATTER FALLBACK (Hanya Jam) ---
-  const convertToWIB = (timeStr) => {
-    if (!timeStr) return '';
-    const date = new Date(timeStr);
-    if (!isNaN(date.getTime())) {
-      return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
-    }
-    if (typeof timeStr === 'string' && timeStr.includes(':')) {
-       try {
-         const parts = timeStr.split(':');
-         let hour = parseInt(parts[0]);
-         let minute = parts[1];
-         hour = hour + 7;
-         if (hour >= 24) hour = hour - 24;
-         return `${hour.toString().padStart(2, '0')}:${minute}`;
-       } catch (e) { return timeStr; }
-    }
-    return timeStr;
-  };
-
-  // --- FORMATTER SUMBU X GRAFIK ---
+  // --- 2. FORMAT GRAFIK YANG JELAS ---
   const formatXAxis = (tickItem) => {
     if (!tickItem) return '';
     const date = new Date(tickItem);
     
     if (!isNaN(date.getTime())) {
-        const longRanges = ['2d', '7d', '30d', '90d', '180d'];
+        // Daftar rentang waktu "Pendek" (Cuma butuh Jam)
+        const shortRanges = ['1h', '3h', '6h', '12h', '24h'];
+        // Daftar rentang waktu "Menengah" (Butuh Tanggal + Jam)
+        const mediumRanges = ['2d', '7d', '30d'];
         
-        if (longRanges.includes(timeRange)) {
+        if (shortRanges.includes(timeRange)) {
+            // Tampilan: 14:30
+            return date.toLocaleTimeString('id-ID', { 
+                hour: '2-digit', minute: '2-digit', hour12: false 
+            });
+        } 
+        else if (mediumRanges.includes(timeRange)) {
+            // Tampilan: 10 Feb 14:30 (Jelas untuk analisis harian)
             return date.toLocaleString('id-ID', { 
                 day: 'numeric', month: 'short', 
                 hour: '2-digit', minute: '2-digit', hour12: false 
             });
-        } 
+        }
         else {
-            return date.toLocaleTimeString('id-ID', { 
-                hour: '2-digit', minute: '2-digit', hour12: false 
+             // Tampilan: 10 Feb 2026 (Untuk jangka panjang)
+             return date.toLocaleString('id-ID', { 
+                day: 'numeric', month: 'short', year: 'numeric'
             });
         }
     }
-    return convertToWIB(tickItem);
+    // Fallback jika format tanggal rusak
+    return tickItem;
+  };
+
+  // Helper Fallback WIB
+  const convertToWIB = (timeStr) => {
+    if (!timeStr) return '';
+    const date = new Date(timeStr);
+    if (!isNaN(date.getTime())) return formatForCSV(timeStr);
+    return timeStr;
   };
 
   const fetchData = async () => {
@@ -170,11 +170,13 @@ const App = () => {
     }
     const dateNow = new Date();
     const dateString = dateNow.toISOString().split('T')[0];
-    const headers = ["Node id", "Time (WIB)", "Temperature (°C)", "DO (mg/L)", "RSSI (dBm)", "SNR (dB)"];
+    
+    // Header CSV
+    const headers = ["Node Name", "Date Time (WIB)", "Temperature (C)", "DO (mg/L)", "RSSI (dBm)", "SNR (dB)"];
 
     const rows = chartData.map(item => [
       `"${selectedNode.label}"`, 
-      `"${formatForCSV(item.time)}"`,
+      `"${formatForCSV(item.time)}"`, // Menggunakan format tanggal rapi
       item.suhu ?? "-", 
       item.do ?? "-",
       item.rssi ?? "-",
@@ -182,7 +184,7 @@ const App = () => {
     ]);
 
     const csvContent = [
-      "sep=,", 
+      "sep=,", // Hint untuk Excel agar baca koma sebagai pemisah
       headers.join(","), 
       ...rows.map(e => e.join(",")) 
     ].join("\n");
@@ -201,7 +203,6 @@ const App = () => {
     if (chartRef.current === null) return;
     document.body.style.cursor = 'wait';
     try {
-      // Penambahan filter untuk menghindari error font loading
       const dataUrl = await toPng(chartRef.current, { 
         cacheBust: true, 
         backgroundColor: '#ffffff', 
@@ -216,7 +217,6 @@ const App = () => {
       document.body.removeChild(link);
     } catch (err) {
       console.error('Failed to save image:', err);
-      // alert("Failed to save image."); // Optional: silent fail agar tidak mengganggu user
     } finally {
       document.body.style.cursor = 'default';
     }
@@ -239,9 +239,21 @@ const App = () => {
       >
         <div className="p-6 flex items-center justify-between gap-3 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-lg shadow-lg shadow-blue-200">
-               <LayoutDashboard className="text-white w-6 h-6" />
+            {/* --- PERUBAHAN 1: LOGO GAMBAR --- */}
+            {/* Pastikan file 'logo.png' ada di folder /public/logo.png */}
+            <div className="w-10 h-10 rounded-lg shadow-lg shadow-blue-100 overflow-hidden border border-gray-200 bg-white flex items-center justify-center">
+               <img 
+                 src="/Lake Quality Monitor icon.png" 
+                 alt="Logo" 
+                 className="w-full h-full object-contain p-1"
+                 onError={(e) => {
+                   e.target.style.display = 'none'; // Sembunyikan jika error
+                   // Fallback ke icon jika gambar tidak ketemu
+                   e.target.parentElement.innerHTML = '<svg class="w-6 h-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M3 9h18" /><path d="m9 16 2 2 4-4" /></svg>';
+                 }}
+               />
             </div>
+            {/* -------------------------------- */}
             <div>
               <h1 className="font-bold text-gray-800 text-lg tracking-tight">Lake Toba</h1>
               <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">IoT Monitoring</p>
@@ -286,7 +298,7 @@ const App = () => {
                 <div className={`w-2 h-2 rounded-full animate-pulse ${status.online ? 'bg-green-500' : 'bg-red-500'}`}></div>
                 <span className="text-xs font-bold text-gray-600">{status.online ? 'Gateway Connected' : 'Gateway Offline'}</span>
              </div>
-             <p className="text-[10px] text-gray-400">Dashboard Version v2.3 (Fix Chart Height)</p>
+             <p className="text-[10px] text-gray-400">Dashboard v2.4</p>
         </div>
       </aside>
 
@@ -369,13 +381,13 @@ const App = () => {
                     </div>
                 </div>
                 
-                {/* PERBAIKAN DI SINI: Memberikan tinggi pasti (bukan flex-1) agar Recharts bisa mengukur */}
                 <div className="w-full h-[300px] md:h-[350px] relative">
                     <ResponsiveContainer width="100%" height="100%">
                     
                     <LineChart key={timeRange} data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         
+                        {/* --- PERUBAHAN 2: FORMAT TANGGAL GRAFIK --- */}
                         <XAxis 
                             dataKey="time"
                             tickFormatter={formatXAxis} 
@@ -393,7 +405,8 @@ const App = () => {
                             labelFormatter={(label) => {
                                 const date = new Date(label);
                                 if (!isNaN(date.getTime())) {
-                                  return date.toLocaleString('id-ID', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', hour12: false });
+                                  // Tooltip selalu menampilkan format lengkap
+                                  return date.toLocaleString('id-ID', { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', hour12: false });
                                 }
                                 return convertToWIB(label);
                             }}
